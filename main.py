@@ -1,6 +1,5 @@
 import spotipy
 import spotipy.util as util
-
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -37,10 +36,26 @@ def get_playlists(username, sp):
 
 def get_playlist_tracks(username, playlist_id, sp):
 
-    # Get the user's playlist
-    playlist = sp.user_playlist(username, playlist_id)
+    tracks = []
 
-    return playlist['tracks']['items']
+    # Get the user's playlist
+    response = sp.user_playlist_tracks(username, playlist_id)
+
+    while response:
+        for item in response['items']:
+            track = item['track']
+            info = {
+                'name': track['name'],
+                'artists': [artist['name'] for artist in track['artists']]
+            }
+            tracks.append(info)
+        
+        if response['next']:
+            response = sp.next(response)
+        else:
+            response = None
+
+    return tracks
 
 
 def main():
@@ -70,7 +85,7 @@ def main():
     i = 0
     for track in tracks:
         i += 1
-        print(f"{i}. {track['track']['name']}")
+        print(f"{i}. {track['name']} - {', '.join(track['artists'])}")
 
 
 if __name__ == "__main__":
