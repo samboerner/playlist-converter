@@ -14,10 +14,9 @@ SPOTIFY_CLIENT_ID = os.getenv("CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 SPOTIFY_REDIRECT_URI = os.getenv("REDIRECT_URI")
 
-'''# Get YouTube API credentials
+# Get YouTube API credentials
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-'''
 
 def get_playlists(username, sp):
 
@@ -58,6 +57,23 @@ def get_playlist_tracks(username, playlist_id, sp):
     return tracks
 
 
+def create_yt_playlist(youtube, title, description):
+    request = youtube.playlists().insert(
+        part="snippet,status",
+        body{
+            "snippet": {
+                "title": title,
+                "description": description
+            },
+            "status": {
+                "privacyStatus": "public"
+            }
+        }
+    )
+    response = request.execute()
+    return response['id']
+
+
 def main():
     print("Welcome to Spotify->YouTube Playlist Converter!")
     username = input("Please enter your Spotify username: ")
@@ -73,13 +89,19 @@ def main():
                                            redirect_uri=SPOTIFY_REDIRECT_URI)
     sp = spotipy.Spotify(auth=token)
 
-    print("Here are your playlists:")
-  
-    playlists = get_playlists(username, sp)
-    for idx in playlists:
-        print(f"{idx}. {playlists[idx][1]}, {playlists[idx][0]}")
+    confirm = False
+    while not confirm:
+        print("Here are your playlists:")
+        playlists = get_playlists(username, sp)
+        for idx in playlists:
+            print(f"{idx}. {playlists[idx][1]}, {playlists[idx][0]}")
 
-    playlist_idx = int(input("Please enter the corresponding number of the playlist you would like to transfer: "))
+        playlist_idx = int(input("Please enter the number that corresponds with the playlist you would like to transfer: "))
+        ans = input(f"Are you sure you want to transfer playlist '{playlists[playlist_idx][1]}'? (Confirm y/n)")
+        
+        if ans == 'y':
+            confirm = True
+    
     tracks = get_playlist_tracks(username, playlists[playlist_idx][0], sp)
 
     i = 0
