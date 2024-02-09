@@ -60,7 +60,7 @@ def get_playlist_tracks(username, playlist_id, sp):
 def create_yt_playlist(youtube, title, description):
     request = youtube.playlists().insert(
         part="snippet,status",
-        body{
+        body={
             "snippet": {
                 "title": title,
                 "description": description
@@ -71,7 +71,38 @@ def create_yt_playlist(youtube, title, description):
         }
     )
     response = request.execute()
+
     return response['id']
+
+
+def add_to_yt_playlist(youtube, playlist_id, video_id):
+    request = youtube.playlistItems().insert(
+        part="snippet",
+        body={
+            "snippet": {
+                "playlistId": playlist_id,
+                "resourceId": {
+                    "kind": "youtube#video",
+                    "videoId": video_id
+                }
+            }
+        }
+    )
+    request.execute()
+
+
+def yt_search(youtube, query):
+    request = youtube.search().list(
+        part="snippet",
+        type="video",
+        q=query
+    )
+    response = request.execute()
+
+    if 'items' in response and len(response['items']) > 0:
+        return response['items'][0]['id']['videoId']
+    else:
+        return None
 
 
 def main():
@@ -89,6 +120,13 @@ def main():
                                            redirect_uri=SPOTIFY_REDIRECT_URI)
     sp = spotipy.Spotify(auth=token)
 
+    flow = InstalledAppFlow.from_client_secrets_file(
+        'client_secret.json',
+        scopes=['https://www.googleapis.com/auth/youtube']
+    )
+    credentials = flow.run_local_server(port=8080)
+    yt = build('youtube', 'v3', credentials=credentials)
+
     confirm = False
     while not confirm:
         print("Here are your playlists:")
@@ -104,10 +142,23 @@ def main():
     
     tracks = get_playlist_tracks(username, playlists[playlist_idx][0], sp)
 
-    i = 0
+    yt_playlist = create_yt_playlist(yt, playlists[playlist_idx][1], 'this is a test')
+
+    for track in tracks:
+        query = f"{track['name']} {', '.join(track['artists'])}"
+        video_id = yt_search(yt, query)
+        if video_id:
+            add_to_yt_playlist(yt, yt_playlist, video_id)
+        else:
+            print(f"No YouTube video found for: {query}")
+
+    print("Link to the new YouTube playlist:")
+    print(f"https://www.youtube.com/playlist?list={yt_playlist}")
+
+    '''i = 0
     for track in tracks:
         i += 1
-        print(f"{i}. {track['name']} - {', '.join(track['artists'])}")
+        print(f"{i}. {track['name']} - {', '.join(track['artists'])}")'''
 
 
 if __name__ == "__main__":
