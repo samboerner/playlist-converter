@@ -3,8 +3,10 @@ import spotipy.util as util
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 import os
 import json
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -88,7 +90,22 @@ def add_to_yt_playlist(youtube, playlist_id, video_id):
             }
         }
     )
-    request.execute()
+    
+    for attempt in range(3):
+        try:
+            response = request.execute()
+            break
+        except HttpError as e:
+            if e.resp.status == 409:
+                print("HTTP 409 error occurred. Retrying...")
+                time.sleep(2 ** attempt)
+            else:
+                raise
+
+    if attempt == 2:
+        print("Maximum retries reached. Failed to add track to playlist")
+
+    return response
 
 
 def yt_search(youtube, query):
@@ -135,7 +152,7 @@ def main():
             print(f"{idx}. {playlists[idx][1]}, {playlists[idx][0]}")
 
         playlist_idx = int(input("Please enter the number that corresponds with the playlist you would like to transfer: "))
-        ans = input(f"Are you sure you want to transfer playlist '{playlists[playlist_idx][1]}'? (Confirm y/n)")
+        ans = input(f"Are you sure you want to transfer playlist '{playlists[playlist_idx][1]}'? (Confirm y/n): ")
         
         if ans == 'y':
             confirm = True
